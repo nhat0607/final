@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0 20px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        button {
+            width: 100%;
+            background-color: #28a745;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        .back-link {
+            display: block;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .back-link a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Thêm Khách Sạn</h1>
+        {{!-- <form method="POST" action="/api/hotels/create"> --}}
+            <<label for="name">Tên Khách Sạn:</label>
+                <input type="text" id="name" name="name" required>
+
+                <label for="city">Thành Phố:</label>
+                <input type="text" id="city" name="location[city]" required>
+
+                <label for="country">Quốc Gia:</label>
+                <input type="text" id="country" name="location[country]" required>
+
+                <label for="rating">Đánh Giá (0-5):</label>
+                <input type="number" id="rating" name="rating" min="0" max="5" required>
+
+                <label for="amenities">Tiện Nghi (cách nhau bởi dấu phẩy):</label>
+                <textarea id="amenities" name="amenities" required></textarea>
+
+                <button type="submit">Thêm Khách Sạn</button>
+        </form>
+
+        <div class="back-link">
+            <a href="/">Quay lại Trang chủ</a>
+        </div>
+    </div>
+</body>
+
+</html>
