@@ -15,6 +15,8 @@ router.get('/all', hotelController.getAllHotels);
 // Route chỉ admin mới được truy cập
 router.delete('/hotel/:id', protect, authorize('admin'), hotelController.deleteHotel);
 
+router.get('/owner/:ownerId', hotelController.getHotelsByOwner);
+
 // Route cập nhật khách sạn
 router.put('/hotel/:id', protect, authorize('admin', 'hotelOwner'), hotelController.updateHotel);
 

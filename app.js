@@ -8,6 +8,9 @@ const orderRoutes = require('./src/routes/orderRoutes');
 const reviewRoutes = require('./src/routes/reviewRoutes');
 const transactionRoutes = require('./src/routes/transactionRoutes')
 const { engine } = require('express-handlebars'); // Sử dụng destructuring để lấy engine từ express-handlebars
+const userRoutes = require('./src/routes/userRoutes');
+const systemRoutes = require('./src/routes/systemRoutes');
+
 const path = require('path');
 
 const cors = require('cors');
@@ -34,7 +37,7 @@ app.use((err, req, res, next) => {
 // Cấu hình CORS
 app.use(cors({
     origin: '*', // Chỉ cho phép frontend của bạn
-    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Các method được phép
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], // Các method được phép
     credentials: true, // Nếu frontend gửi kèm cookie
 }));
 
@@ -64,9 +67,16 @@ app.use('/api/rooms', roomRoutes);
 
 app.use('/api/reservations', reservationRoutes);
 
+app.use('/api/users', userRoutes);
+
 //app.use('/api', paymentRoutes);
 
+app.use('/api/systems', systemRoutes);
+
+
 app.use('/api/orders', orderRoutes); // Đăng ký routes order
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/uploads/reviews', express.static('uploads'));
 

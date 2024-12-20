@@ -1,6 +1,8 @@
 const Hotel = require('../models/hotel');
 const express = require('express');
 const Room = require('../models/room');
+const mongoose = require('mongoose');
+
 
 // Lấy tất cả khách sạn
 exports.getAllHotels = async (req, res) => {
@@ -11,6 +13,28 @@ exports.getAllHotels = async (req, res) => {
         res.status(500).json({ message: 'Error retrieving hotels', error });
     }
 };
+
+exports.getHotelsByOwner = async (req, res) => {
+    try {
+      const { ownerId } = req.params; // Lấy ownerId từ params
+    //   console.log(ownerId);
+  
+      // Tìm tất cả khách sạn có ownerId trùng với giá trị trong params
+      const hotels = await Hotel.find({ owner: new mongoose.Types.ObjectId(ownerId) });
+  
+      // Nếu không tìm thấy khách sạn nào
+      if (hotels.length === 0) {
+        return res.status(404).json({ message: 'No hotels found for this owner' });
+      }
+  
+      // Trả về danh sách các khách sạn
+      res.status(200).json(hotels);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Server Error' });
+    }
+  };
+
 exports.getHotelDetails = async (req, res) => {
     try {
         // Lấy ID khách sạn từ tham số đường dẫn

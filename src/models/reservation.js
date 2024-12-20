@@ -25,6 +25,20 @@ const reservationSchema = new mongoose.Schema({
         enum: ['booked', 'cancelled', 'completed'],
         default: 'booked',
     },
+    guests: [
+        {
+            name: {
+                type: String,
+            },
+            CCCD: {
+                type: String,
+            },
+            gender: {
+                type: String,
+                enum: ['male', 'female', 'other'],
+            },
+        },
+    ],
 }, { timestamps: true });
 
 const Reservation = mongoose.model('Reservation', reservationSchema, 'Reservation');

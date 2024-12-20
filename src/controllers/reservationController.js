@@ -1,5 +1,6 @@
 const Reservation = require('../models/reservation');
 const Room = require('../models/room');
+const mongoose = require('mongoose');
 
 exports.bookRoom = async (req, res) => {
     const { roomId } = req.params;
@@ -288,3 +289,132 @@ exports.cancelBooking = async (req, res) => {
         });
     }
 };
+
+
+exports.getBookingsByHotel = async (req, res) => {
+    try {
+      const { hotelId } = req.params; // Lấy hotelId từ params
+      console.log(hotelId);
+  
+      // Kiểm tra nếu hotelId không hợp lệ
+      if (!mongoose.Types.ObjectId.isValid(hotelId)) {
+        return res.status(400).json({ message: "Invalid hotelId" });
+      }
+  
+      // Truy vấn tất cả các bản ghi có hotelId trùng khớp và lọc room không null
+      const bookings = await Reservation.find()
+        .populate({
+          path: 'room', // Liên kết với Room
+          match: { hotel: new mongoose.Types.ObjectId(hotelId) }, // Lọc theo hotelId trong Room
+          populate: { path: 'hotel' }, // Tùy chọn: Lấy thêm thông tin chi tiết về hotel
+        })
+        .populate("user", "name email") // Lấy thông tin người dùng
+        .exec();
+  
+      // Lọc bỏ các bản ghi có room là null
+      const filteredBookings = bookings.filter(booking => booking.room !== null);
+  
+      // Nếu không tìm thấy đặt phòng nào
+      if (filteredBookings.length === 0) {
+        return res.status(200).json([]);    
+      }
+  
+      // Trả về danh sách đặt phòng đã lọc
+      res.status(200).json(filteredBookings);
+    } catch (err) {
+      console.error("Error fetching bookings by hotelId:", err);
+      res.status(500).json({ message: "Server Error" });
+    }
+  };
+  
+    exports.getBookingsByUser = async (req, res) => {
+      try {
+        const { userId } = req.params; // Lấy hotelId từ params
+    
+        // Kiểm tra nếu hotelId không hợp lệ
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+          return res.status(400).json({ message: "Invalid userId" });
+        }
+    
+        // Truy vấn tất cả các bản ghi có hotelId trùng khớp
+        const bookings = await Reservation.find({ user: new mongoose.Types.ObjectId(userId) })
+          .populate({          
+            path: 'room', 
+            populate: { path: 'hotel' },
+          })
+          .exec();
+        // console.log(bookings);
+  
+        // Nếu không tìm thấy đặt phòng nào
+        if (bookings.length === 0) {
+          return res.status(404).json({ message: "No bookings found for this user" });
+        }
+    
+        // Trả về danh sách đặt phòng
+        res.status(200).json(bookings);
+      } catch (err) {
+        console.error("Error fetching bookings by userId:", err);
+        res.status(500).json({ message: "Server Error" });
+      }
+    };
+  
+  exports.getBookingsById = async (req, res) => {
+    try {
+      const { Id } = req.params; // Lấy hotelId từ params
+  
+      // Kiểm tra nếu hotelId không hợp lệ
+      if (!mongoose.Types.ObjectId.isValid(Id)) {
+        return res.status(400).json({ message: "Invalid booking" });
+      }
+  
+      // Truy vấn tất cả các bản ghi có hotelId trùng khớp
+      const bookings = await Reservation.findById(Id)
+          .populate("user")
+        .populate("room") 
+        .exec();
+        if (bookings.length === 0) {
+        return res.status(404).json({ message: "No booking found" });
+      }
+  
+      // Trả về danh sách đặt phòng
+      res.status(200).json(bookings);
+    } catch (err) {
+      console.error("Error fetching booking:", err);
+      res.status(500).json({ message: "Server Error" });
+    }
+  };
+  
+  exports.updateGuestsById = async (req, res) => {
+    try {
+      const { Id } = req.params; // Lấy booking Id từ params
+      const { guests } = req.body; // Lấy danh sách guests từ body request
+   
+      // Kiểm tra nếu booking Id không hợp lệ
+      if (!mongoose.Types.ObjectId.isValid(Id)) {
+        return res.status(400).json({ message: "Invalid booking ID" });
+      }
+    
+      // Kiểm tra dữ liệu guests có tồn tại và đúng định dạng
+      if (!Array.isArray(guests) || guests.length === 0) {
+        return res.status(400).json({ message: "Guests data is invalid or missing" });
+      }
+    
+      // Tìm và cập nhật danh sách guests
+      const updatedReservation = await Reservation.findByIdAndUpdate(
+        Id,
+        { guests }, // Cập nhật trường guests
+        { new: true, runValidators: true } // Trả về bản ghi đã cập nhật và kiểm tra validation
+      );
+    
+        // Kiểm tra nếu không tìm thấy booking
+        if (!updatedReservation) {
+          return res.status(404).json({ message: "Booking not found" });
+        }
+    
+      // Trả về bản ghi đã cập nhật
+      res.status(200).json(updatedReservation);
+    } catch (err) {
+      console.error("Error updating guests:", err);
+      res.status(500).json({ message: "Server Error" });
+    }
+  };

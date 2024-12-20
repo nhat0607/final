@@ -1,10 +1,21 @@
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
 // Cấu hình Multer
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/reviews/'); // Thư mục lưu file
+        let uploadPath = 'uploads/reviews/'; // Mặc định là thư mục reviews
+
+        if (req.body.hotelId) {
+            // Nếu có hotelId, lưu vào thư mục tương ứng
+            uploadPath = `uploads/hotel/${req.body.hotelId}`;
+        }
+
+        // Tạo thư mục nếu chưa tồn tại
+        fs.mkdirSync(uploadPath, { recursive: true });
+
+        cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;

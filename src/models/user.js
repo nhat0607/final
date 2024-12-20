@@ -31,6 +31,15 @@ const userSchema = new mongoose.Schema({
         enum: ['customer', 'hotelOwner', 'admin'],
         default: 'customer', // Mặc định là khách hàng
     },
+    statusemail: {
+        type: String,
+        enum: ['verify', 'unverify'],
+        default: 'unverify',
+    },
+    statusaccount: {
+        type: String,
+        enum: ['pending', 'active', 'ban'],
+    },
 }, { timestamps: true });
 
 // Mã hóa mật khẩu trước khi lưu vào DB

@@ -1,6 +1,9 @@
 // controllers/roomController.js
 const Hotel = require('../models/hotel');
 const Room = require('../models/room');
+const mongoose = require('mongoose');
+const path = require('path');
+const fs = require('fs');
 
 // Thêm phòng mới cho một khách sạn
 // exports.addRoom = async (req, res) => {
@@ -242,6 +245,11 @@ exports.updateRoom = async (req, res) => {
             });
         }
 
+        const updateData = { ...req.body };
+        if (!req.body.availableDates) {
+            updateData.availableDates = room.availableDates;
+        }
+
         // Cập nhật thông tin phòng
         const updatedRoom = await Room.findByIdAndUpdate(id, req.body, { new: true });
 
@@ -460,4 +468,79 @@ exports.detailRoom = async (req, res) => {
         });
     }
 
+};
+
+
+exports.getRoomsByHotel = async (req, res) => {
+    try {
+      const { hotelId } = req.params;
+    //   console.log(hotelId);
+  
+      const rooms = await Room.find({ hotel: new mongoose.Types.ObjectId(hotelId) });
+  
+      if (rooms.length === 0) {
+        return res.status(404).json({ message: 'No rooms found for this hotel' });
+      }
+  
+      res.status(200).json(rooms);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Server Error' });
+    }
+  };
+
+exports.deleteMedia = async (req, res) => {
+    const { roomId, fileName } = req.params;
+    console.log(roomId);
+    console.log(fileName);
+
+    try {
+        const room = await Room.findById(roomId);
+        if (!room) {
+            return res.status(404).json({ message: 'Room not found' });
+        }
+
+        const fileIndex = room.media.indexOf(`/uploads/hotel/${room.hotel.toString()}/${fileName}`);
+        if (fileIndex === -1) {
+            return res.status(400).json({ message: 'File not found in room media' });
+        }
+
+        room.media.splice(fileIndex, 1);
+        await room.save();
+
+        const filePath = path.resolve(__dirname, '../../uploads/hotel', room.hotel.toString(), fileName);
+        console.log(filePath);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            console.log(`Deleted file at: ${filePath}`);
+        } else {
+            console.log(`File does not exist at: ${filePath}`);
+        }
+
+        res.status(200).json({ message: 'File deleted successfully', media: room.media });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred', error });
+    }
+};
+
+exports.addMedia = async (req, res) => {
+    const { roomId } = req.params;
+
+    try {
+        const room = await Room.findById(roomId);
+        if (!room) {
+            return res.status(404).json({ message: 'Room not found' });
+        }
+
+        const uploadedFiles = req.files.map(file => `/uploads/hotel/${req.body.hotelId}/${file.filename}`);
+
+        room.media.push(...uploadedFiles);
+        await room.save();
+
+        res.status(200).json({ message: 'Files added successfully', media: room.media });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred', error });
+    }
 };

@@ -43,6 +43,7 @@ const roomSchema = new mongoose.Schema({
             required: true,
         },
     }],
+    media: { type: [String], default: [] }, // Lưu đường dẫn file (URL)
 }, { timestamps: true });
 
 const Room = mongoose.model('Room', roomSchema, 'Room');

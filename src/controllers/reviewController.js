@@ -3,6 +3,8 @@ const Review = require('../models/review');
 const Room = require('../models/room');
 const User = require('../models/user');
 const { updateHotelRating } = require('../utils/ratinghotel');
+const mongoose = require('mongoose');
+
 
 exports.addReview = async (req, res) => {
     try {
@@ -68,3 +70,27 @@ exports.addReview = async (req, res) => {
 
 
 };
+
+exports.getReviewsByRoomId = async (req, res) => {
+    try {
+      const { roomId } = req.params; 
+        // console.log(roomId);
+
+      if (!mongoose.Types.ObjectId.isValid(roomId)) {
+        return res.status(400).json({ message: "Invalid booking" });
+      }
+
+      const reviews = await Review.find({room: new mongoose.Types.ObjectId(roomId) })
+        .populate("user")
+        .exec();
+
+      if (reviews.length === 0) {
+        return res.status(404).json({ message: "No booking found" });
+      }
+  
+      res.status(200).json(reviews);
+    } catch (err) {
+      console.error("Error fetching booking:", err);
+      res.status(500).json({ message: "Server Error" });
+    }
+  };
