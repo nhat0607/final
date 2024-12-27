@@ -43,6 +43,14 @@ const roomSchema = new mongoose.Schema({
             required: true,
         },
     }],
+    bookDates: [{
+        startDate: {
+            type: Date,
+        },
+        endDate: {
+            type: Date,
+        },
+    }],
     media: { type: [String], default: [] }, // Lưu đường dẫn file (URL)
 }, { timestamps: true });
 

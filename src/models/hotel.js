@@ -35,8 +35,9 @@ const hotelSchema = new mongoose.Schema({
     rooms: [{ // Liên kết tới các phòng trong khách sạn
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Room', // Liên kết với mô hình Room
-        required: true,
+        // required: true,
     }],
+    media: { type: [String], default: [] }, // Lưu đường dẫn file (URL)
     amenities: [String],
 });
 

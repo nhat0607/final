@@ -2,93 +2,83 @@ const Reservation = require('../models/reservation');
 const Room = require('../models/room');
 const mongoose = require('mongoose');
 
+
 exports.bookRoom = async (req, res) => {
-    const { roomId } = req.params;
-    const { checkInDate, checkOutDate } = req.body;
+  const { roomId } = req.params;
+  const { checkInDate, checkOutDate } = req.body;
 
-    console.log('Check-in date received:', checkInDate);
-    console.log('Check-out date received:', checkOutDate);
+  try {
+      const room = await Room.findById(roomId);
+      if (!room) {
+          return res.status(404).json({ success: false, message: 'Room not found' });
+      }
 
-    try {
-        const room = await Room.findById(roomId);
-        if (!room) {
-            return res.status(404).json({ success: false, message: 'Room not found' });
-        }
+      const startDate = new Date(checkInDate);
+      const endDate = new Date(checkOutDate);
 
-        const startDate = new Date(checkInDate);
-        const endDate = new Date(checkOutDate);
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          return res.status(400).json({ success: false, message: 'Invalid check-in or check-out date.' });
+      }
 
-        // Kiểm tra giá trị thời gian hợp lệ
-        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-            return res.status(400).json({ success: false, message: 'Invalid check-in or check-out date.' });
-        }
+      if (startDate >= endDate) {
+          return res.status(400).json({ success: false, message: 'Check-in date must be before check-out date.' });
+      }
 
-        // Kiểm tra nếu ngày check-in phải trước ngày check-out
-        if (startDate >= endDate) {
-            return res.status(400).json({ success: false, message: 'Check-in date must be before check-out date.' });
-        }
+      const isAvailable = room.availableDates.some(availableDate => {
+          const availableStart = new Date(availableDate.startDate);
+          const availableEnd = new Date(availableDate.endDate);
+          return availableStart <= startDate && availableEnd >= endDate;
+      });
 
-        console.log('Start date:', startDate);
-        console.log('End date:', endDate);
+      if (!isAvailable) {
+          return res.status(400).json({
+              success: false,
+              message: 'Room is not available during this period.',
+          });
+      }
 
-        // Kiểm tra xem khoảng ngày yêu cầu có thể được đặt không
-        const isAvailable = room.availableDates.some(availableDate => {
-            const availableStart = new Date(availableDate.startDate);
-            const availableEnd = new Date(availableDate.endDate);
+      // Tính thời gian hết hạn (10 phút sau khi đặt phòng)
+      const expirationDate = new Date();
+      expirationDate.setMinutes(expirationDate.getMinutes() + 10);
 
-            // Check if requested dates are within any available date range
-            return availableStart <= startDate && availableEnd >= endDate;
-        });
+      const reservation = await Reservation.create({
+          room: roomId,
+          user: req.user.id,
+          checkInDate,
+          checkOutDate,
+          expirationDate, // Lưu thời gian hết hạn
+      });
 
-        if (!isAvailable) {
-            return res.status(400).json({
-                success: false,
-                message: 'Room is not available during this period.',
-            });
-        }
+      room.bookDates.push({
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+    });
 
-        // Tạo đặt phòng mới
-        const reservation = await Reservation.create({
-            room: roomId,
-            user: req.user.id,
-            checkInDate,
-            checkOutDate,
-        });
+      const updatedAvailableDates = [];
+      room.availableDates.forEach(availableDate => {
+          const availableStart = new Date(availableDate.startDate);
+          const availableEnd = new Date(availableDate.endDate);
 
-        // Cập nhật danh sách ngày trống của phòng bằng cách chia nhỏ khoảng ngày
-        const updatedAvailableDates = [];
+          if (startDate > availableStart && endDate < availableEnd) {
+              updatedAvailableDates.push({ startDate: availableStart, endDate: new Date(startDate.setDate(startDate.getDate() - 0)) });
+              updatedAvailableDates.push({ startDate: new Date(endDate.setDate(endDate.getDate() + 0)), endDate: availableEnd });
+          } else if (startDate <= availableStart && endDate < availableEnd && endDate >= availableStart) {
+              updatedAvailableDates.push({ startDate: new Date(endDate.setDate(endDate.getDate() + 1)), endDate: availableEnd });
+          } else if (startDate > availableStart && endDate >= availableEnd && startDate <= availableEnd) {
+              updatedAvailableDates.push({ startDate: availableStart, endDate: new Date(startDate.setDate(startDate.getDate() - 1)) });
+          } else if (endDate < availableStart || startDate > availableEnd) {
+              updatedAvailableDates.push(availableDate);
+          }
+      });
 
-        room.availableDates.forEach(availableDate => {
-            const availableStart = new Date(availableDate.startDate);
-            const availableEnd = new Date(availableDate.endDate);
+      room.availableDates = updatedAvailableDates;
+      await room.save();
 
-            // Nếu khoảng yêu cầu nằm hoàn toàn bên trong một khoảng trống hiện tại
-            if (startDate > availableStart && endDate < availableEnd) {
-                updatedAvailableDates.push({ startDate: availableStart, endDate: new Date(startDate.setDate(startDate.getDate() - 1)) });
-                updatedAvailableDates.push({ startDate: new Date(endDate.setDate(endDate.getDate() + 1)), endDate: availableEnd });
-            }
-            // Nếu khoảng yêu cầu bắt đầu từ đầu một khoảng ngày trống
-            else if (startDate <= availableStart && endDate < availableEnd && endDate >= availableStart) {
-                updatedAvailableDates.push({ startDate: new Date(endDate.setDate(endDate.getDate() + 1)), endDate: availableEnd });
-            }
-            // Nếu khoảng yêu cầu kết thúc ở cuối một khoảng ngày trống
-            else if (startDate > availableStart && endDate >= availableEnd && startDate <= availableEnd) {
-                updatedAvailableDates.push({ startDate: availableStart, endDate: new Date(startDate.setDate(startDate.getDate() - 1)) });
-            }
-            // Nếu khoảng ngày trống không liên quan đến khoảng yêu cầu
-            else if (endDate < availableStart || startDate > availableEnd) {
-                updatedAvailableDates.push(availableDate);
-            }
-        });
-
-        room.availableDates = updatedAvailableDates;
-        await room.save();
-
-        res.status(201).json({ success: true, data: reservation });
-    } catch (error) {
-        console.error(error);
-        res.status(400).json({ success: false, message: error.message });
-    }
+      res.status(201).json({ success: true, data: reservation });
+  } catch (error) {
+      console.error(error);
+      res.status(400).json({ success: false, message: error.message });
+  }
 };
 
 // API đặt phòng

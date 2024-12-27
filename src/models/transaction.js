@@ -45,8 +45,6 @@ const transactionSchema = new mongoose.Schema({
         enum: ['paid', 'failed', 'refunded'],
         default: 'paid',
     },
-    hostName: { type: String, default: "N/A" },  // Đảm bảo trường này tồn tại
-    hostEmail: { type: String, default: "N/A" },  // Đảm bảo trường này tồn tại
 
 }, { timestamps: true });
 

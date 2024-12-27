@@ -148,10 +148,15 @@ const fs = require('fs');
 exports.addRoom = async (req, res) => {
     const { hotelId } = req.params;
     const { startDate, endDate } = req.body;
+    const files = req.files;
+    // console.log(hotelId);
+    // console.log(startDate, endDate);
+    // console.log(files);
 
     try {
         // Tìm khách sạn theo ID
         const hotel = await Hotel.findById(hotelId);
+        console.log(hotel);
         if (!hotel) {
             return res.status(404).json({
                 success: false,
@@ -167,7 +172,17 @@ exports.addRoom = async (req, res) => {
             });
         }
 
-        // Kiểm tra tính hợp lệ của startDate và endDate
+        // Lấy URL của file
+        const images = files
+            .filter(file => file.mimetype.startsWith('image'))
+            .map(file => `/uploads/hotel/${hotelId}/${file.filename}`);
+        const videos = files
+            .filter(file => file.mimetype.startsWith('video'))
+            .map(file => `/uploads/hotel/${hotelId}/${file.filename}`);
+
+        const media = [...images, ...videos];
+
+
         const start = new Date(startDate);
         const end = new Date(endDate);
         if (start >= end) {
@@ -182,21 +197,17 @@ exports.addRoom = async (req, res) => {
             startDate: start,
             endDate: end,
         }];
-
+        console.log(availableDates);
         // Tạo phòng mới
         const room = new Room({
             ...req.body,
             hotel: hotelId,
             availableDates,
+            media,
         });
-
+        console.log(room);
         // Lưu phòng vào MongoDB
         await room.save();
-
-        // Cập nhật khách sạn để thêm _id của phòng vào trường 'rooms'
-        await Hotel.findByIdAndUpdate(hotelId, {
-            $push: { rooms: room._id }, // Thêm _id của phòng vào mảng 'rooms' của khách sạn
-        });
 
         res.status(201).json({
             success: true,
@@ -204,7 +215,7 @@ exports.addRoom = async (req, res) => {
             message: 'Room added successfully',
         });
     } catch (error) {
-        res.status(400).json({
+        res.status(501).json({
             success: false,
             message: 'Error adding room',
             error: error.message,
@@ -307,48 +318,6 @@ exports.deleteRoom = async (req, res) => {
         });
     }
 };
-// exports.searchRooms = async (req, res) => {
-//     const { location, checkInDate, checkOutDate, guests } = req.body;
-
-//     try {
-//         // Chuyển đổi checkInDate và checkOutDate thành đối tượng Date
-//         const checkIn = new Date(checkInDate);
-//         const checkOut = new Date(checkOutDate);
-
-//         // Tạo mảng ngày yêu cầu
-//         const requestedDates = [];
-//         for (let date = new Date(checkIn); date <= checkOut; date.setDate(date.getDate() + 1)) {
-//             requestedDates.push(date.toISOString().split('T')[0]); // Chuyển thành chuỗi YYYY-MM-DD
-//         }
-
-//         // Tìm khách sạn theo địa chỉ
-//         const hotels = await Hotel.find({ location: location }).select('_id');
-
-//         // Tìm phòng theo khách sạn, sức chứa và có sẵn trong khoảng ngày
-//         const availableRooms = await Room.find({
-//             hotel: { $in: hotels }, // Tìm phòng trong các khách sạn theo địa chỉ
-//             capacity: { $gte: guests }, // Lọc theo sức chứa
-//             availableDates: { $all: requestedDates }, // Kiểm tra tất cả ngày yêu cầu
-//         });
-
-//         if (availableRooms.length === 0) {
-//             return res.status(404).json({
-//                 success: false,
-//                 message: 'No rooms available for the selected dates and location.',
-//             });
-//         }
-
-//         return res.status(200).json({
-//             success: true,
-//             data: availableRooms,
-//         });
-//     } catch (error) {
-//         res.status(500).json({
-//             success: false,
-//             message: error.message,
-//         });
-//     }
-// };
 
 
 exports.searchRooms = async (req, res) => {
@@ -533,6 +502,8 @@ exports.addMedia = async (req, res) => {
             return res.status(404).json({ message: 'Room not found' });
         }
 
+        console.log('test1');
+        console.log(req.files);
         const uploadedFiles = req.files.map(file => `/uploads/hotel/${req.body.hotelId}/${file.filename}`);
 
         room.media.push(...uploadedFiles);

@@ -6,7 +6,6 @@ const fs = require('fs');
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         let uploadPath = 'uploads/reviews/'; // Mặc định là thư mục reviews
-
         if (req.body.hotelId) {
             // Nếu có hotelId, lưu vào thư mục tương ứng
             uploadPath = `uploads/hotel/${req.body.hotelId}`;

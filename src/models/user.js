@@ -52,6 +52,17 @@ userSchema.pre('save', async function (next) {
     this.password = await bcrypt.hash(this.password, salt);
 });
 
+userSchema.pre('save', function (next) {
+    if (!this.statusaccount) {
+        if (this.role === 'customer') {
+            this.statusaccount = 'active';
+        } else if (this.role === 'hotelOwner') {
+            this.statusaccount = 'pending';
+        }
+    }
+    next();
+});
+
 // Tạo phương thức để kiểm tra mật khẩu
 userSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);

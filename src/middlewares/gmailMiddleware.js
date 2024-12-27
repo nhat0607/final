@@ -20,6 +20,8 @@ const setAccessTokenWithRefreshToken = async (refreshToken) => {
   try {
     oauth2Client.setCredentials({ refresh_token: refreshToken });
     const { token } = await oauth2Client.getAccessToken();
+    console.log('Access Token:', token); // Xác nhận access token mới
+
     return token;
   } catch (error) {
     console.error('Error refreshing access token:', error);
@@ -178,6 +180,54 @@ ${body}
     }
 };
 
+const sendPaymentConfirmationEmail = async (user, order, reservation, amount) => {
+    try {
+        const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+        const accessToken = await setAccessTokenWithRefreshToken(refreshToken);
+        oauth2Client.setCredentials({ access_token: accessToken, refresh_token: refreshToken });
 
+        const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
+        const subject = 'Payment Confirmation';
+        const body = `
+Dear ${user.name},
 
+We have successfully received your payment for the reservation with the following details:
+
+- Reservation ID: ${reservation._id}
+- Order ID: ${order._id}
+- Amount Paid: ${amount} VND
+
+Thank you for choosing Stay Finder. Your reservation is now confirmed. Please contact our support team if you have any questions.
+
+Best regards,
+The Stay Finder Team
+        `.trim();
+
+        const message = `
+From: "Stay Finder" <stayfindera@gmail.com>
+To: ${user.email}
+Subject: ${subject}
+
+${body}
+        `.trim();
+
+        const encodedMessage = Buffer.from(message)
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+
+        await gmail.users.messages.send({
+            userId: 'me',
+            requestBody: { raw: encodedMessage },
+        });
+
+        console.log(`Payment confirmation email sent to ${user.email}`);
+    } catch (error) {
+        console.error('Failed to send payment confirmation email:', error);
+        throw new Error('Error in sending payment confirmation email');
+    }
+};
+
+// Payment callback handling

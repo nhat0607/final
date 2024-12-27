@@ -7,7 +7,7 @@ const upload = require('../utils/multerConfig');
 const router = express.Router();
 
 // Chỉ chủ khách sạn mới có quyền thêm phòng
-router.post('/hotels/:hotelId/rooms', protect, authorize('hotelOwner'), addRoom);
+router.post('/hotels/:hotelId/rooms', protect, authorize('hotelOwner'), upload.array('files', 10), addRoom);
 
 router.delete('/delete/:id', protect, authorize('admin', 'hotelOwner'), deleteRoom);
 
@@ -30,7 +30,6 @@ router.delete('/rooms/:roomId/media/:fileName',
 router.post('/rooms/:roomId/media', 
     protect, authorize('hotelOwner'), 
     upload.array('files', 10), addMedia);
-
 
 
 module.exports = router;

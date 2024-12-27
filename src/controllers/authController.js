@@ -24,6 +24,7 @@ exports.register = async (req, res) => {
             country,
             phonenumber,
             role: role || 'customer', // Nếu không có vai trò, mặc định là 'customer'
+            statusemail: 'unverify', // Chưa xác minh email
         });
 
         // Tạo JWT token
@@ -93,7 +94,7 @@ exports.registerhotel = async (req, res) => {
             error: error.message,
         });
     }
-};
+}
 
 // Đăng nhập người dùng
 exports.login = async (req, res) => {

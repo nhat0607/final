@@ -39,6 +39,7 @@ const reservationSchema = new mongoose.Schema({
             },
         },
     ],
+    expirationDate: { type: Date, required: true }, // Thời gian hết hạn
 }, { timestamps: true });
 
 const Reservation = mongoose.model('Reservation', reservationSchema, 'Reservation');

@@ -132,6 +132,8 @@ exports.getAdminTransactions = async (req, res) => {
             hostId: transaction.hostId,
             roomId: transaction.reservationId?.room,
             amount: transaction.amount,
+            hostAmount: transaction.hostAmount,
+            adminFee: transaction.adminFee,
             paymentMethod: transaction.paymentMethod,
             status: transaction.status,
             transactionDate: transaction.transactionDate,
@@ -144,6 +146,7 @@ exports.getAdminTransactions = async (req, res) => {
             // hotelName: transaction.reservationId?.room?.hotel?.name || null,
         }));
 
+        console.log("hostanme", transaction.hostEmail)
         res.status(200).json({
             success: true,
             data: {
