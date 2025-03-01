@@ -30,6 +30,11 @@ const orderSchema = new mongoose.Schema({
         required: true,
     },
     details: String, // Thông tin chi tiết về order
+    paymentMethod: {
+        type: Number,
+        enum: [50,100],
+        required: true,
+    }
 }, { timestamps: true });
 
 const Order = mongoose.model('Order', orderSchema, 'Order');

@@ -17,4 +17,4 @@ yarn-error.log
 .vscode/settings.json
 .lsp/.cache
 .clj-kondo/.cache
- 
+credentials.json

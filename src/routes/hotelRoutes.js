@@ -8,7 +8,7 @@ const upload = require('../utils/multerConfig');
 router.post('/add-hotel', protect, authorize('admin', 'hotelOwner'), hotelController.createHotel);
 
 //update hotel chỉ chủ hotel mới dc update
-router.put('/update/:id', protect, authorize('hotelOwner'), upload.array('files', 10), hotelController.updateHotel);
+router.put('/update/:id', protect, authorize('hotelOwner') , hotelController.updateHotel);
 
 // Route cho tất cả người dùng
 router.get('/all', hotelController.getAllHotels);
@@ -30,5 +30,14 @@ router.post('/search', hotelController.searchHotels);
 
 // tìm chi tiết phòng trong khách sạn
 router.post('/searchroombyhotel/:id', hotelController.getRoomsByHotel);
+
+router.delete('/hotels/:hotelId/media/:fileName', 
+    protect, 
+    authorize('hotelOwner'), 
+    hotelController.deleteMedia);
+
+router.post('/hotels/:hotelId/media', 
+    protect, authorize('hotelOwner'), 
+    upload.array('files', 10), hotelController.addMedia);
 
 module.exports = router;

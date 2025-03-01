@@ -9,7 +9,7 @@ exports.getCustomerTransactions = async (req, res) => {
             .select("-hostAmount -adminFee")// Ẩn thông tin không cần thiết
             .populate({
                 path: "reservationId",
-                select: "room checkInDate checkOutDate", // Chỉ lấy trường cần thiết
+                select: "room checkInDate checkOutDate isReviewed", // Chỉ lấy trường cần thiết
                 populate: {
                     path: "room",
                     select: "hotel", // Lấy hotelId từ Room
@@ -19,7 +19,7 @@ exports.getCustomerTransactions = async (req, res) => {
                     },
                 },
             });
-
+            
         // Ghi log chi tiết khi populate gặp vấn đề
         const formattedTransactions = transactions.map((transaction) => {
             if (
@@ -42,6 +42,7 @@ exports.getCustomerTransactions = async (req, res) => {
                 paymentMethod: transaction.paymentMethod,
                 transactionDate: transaction.transactionDate,
                 status: transaction.status,
+                isReview: transaction.reservationId?.isReviewed || false,
                 checkInDate: transaction.reservationId?.checkInDate || null,
                 checkOutDate: transaction.reservationId?.checkOutDate || null,
                 hotelName: transaction.reservationId?.room?.hotel?.name || null,
@@ -57,6 +58,7 @@ exports.getCustomerTransactions = async (req, res) => {
         res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
+
 exports.getHostTransactions = async (req, res) => {
     try {
         // Lấy tất cả giao dịch liên quan đến Host
@@ -67,7 +69,7 @@ exports.getHostTransactions = async (req, res) => {
                 select: "room checkInDate checkOutDate", // Chỉ lấy trường cần thiết
                 populate: {
                     path: "room",
-                    select: "hotel", // Lấy hotelId từ Room
+                    select: "hotel roomType", // Lấy hotelId từ Room
                     populate: {
                         path: "hotel",
                         select: "name", // Lấy tên khách sạn từ Hotel
@@ -102,6 +104,7 @@ exports.getHostTransactions = async (req, res) => {
         res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
+
 exports.getAdminTransactions = async (req, res) => {
     try {
         // Lấy tất cả giao dịch với trạng thái 'paid'
@@ -146,7 +149,7 @@ exports.getAdminTransactions = async (req, res) => {
             // hotelName: transaction.reservationId?.room?.hotel?.name || null,
         }));
 
-        console.log("hostanme", transaction.hostEmail)
+        console.log("hostname", transactions);
         res.status(200).json({
             success: true,
             data: {

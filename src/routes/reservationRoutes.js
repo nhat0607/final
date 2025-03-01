@@ -7,7 +7,8 @@ const {
     getBookingsByHotel,
     getBookingsByUser,
     getBookingsById,
-    updateGuestsById
+    updateGuestsById,
+    updateRoomDates
 } = require('../controllers/reservationController'); // Import controller
 
 const router = express.Router();
@@ -15,6 +16,7 @@ const router = express.Router();
 // Đặt phòng
 router.post('/book/:roomId', protect, bookRoom);
 
+router.put('/addbook/:roomId', protect, authorize('hotelOwner'), updateRoomDates);
 // Kiểm tra phòng trống
 router.get('/check-availability/:roomId', checkAvailability);
 

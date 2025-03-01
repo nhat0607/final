@@ -14,56 +14,66 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
-exports.createUser = async (req, res) => {
+exports.detailUser = async (req, res) => {
     try {
-        if (!req.user || !['admin'].includes(req.user.role)) {
-            return res.status(403).json({
-                success: false,
-                message: 'Not authorized to create a user',
-            });
-        }
+        const userId = req.params.id; // Lấy ID từ URL
+        const user = await User.findById(userId).select('-password'); // Ẩn trường password
 
-        const { name, email, password, role } = req.body;
-        if (!name || !email || !password) {
+        if (!user) {
             return res.status(400).json({
                 success: false,
-                message: 'Name, email, and password are required',
+                message: "User not found",
             });
         }
 
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({
-                success: false,
-                message: 'Email already exists',
-            });
-        }
-
-        const user = new User({
-            name,
-            email,
-            password,
-            role, 
-        });
-
-        // console.log(user);
-        await user.save();
-
-        res.status(201).json({
+        return res.status(200).json({
             success: true,
             data: user,
-            message: 'User created successfully',
         });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({
+        console.error('Error fetching user details:', error.message);
+        return res.status(500).json({
             success: false,
-            message: 'Server error',
+            message: 'Internal server error',
         });
     }
 };
 
 exports.updateUser = async (req, res) => {
+    try {
+        const userId = req.params.id; // Lấy ID từ URL
+        const updateData = req.body; // Lấy dữ liệu từ body request
+
+        // Tìm và cập nhật user
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            updateData, // Dữ liệu cập nhật
+            { new: true, runValidators: true, select: '-password' } // Lựa chọn trả về bản ghi mới nhất, kiểm tra hợp lệ, ẩn mật khẩu
+        );
+
+        // Nếu không tìm thấy user
+        if (!updatedUser) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "User updated successfully",
+            data: updatedUser,
+        });
+    } catch (error) {
+        console.error("Error updating user:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+};
+
+exports.updateStatus = async (req, res) => {
     const { id } = req.params;
     // console.log(id);
     const { email } = req.body;

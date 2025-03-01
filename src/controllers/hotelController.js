@@ -2,13 +2,23 @@ const Hotel = require('../models/hotel');
 const express = require('express');
 const Room = require('../models/room');
 const mongoose = require('mongoose');
+const path = require('path');
+const fs = require('fs');
 
 
 // Lấy tất cả khách sạn
 exports.getAllHotels = async (req, res) => {
     try {
-        const hotels = await Hotel.find();
-        res.json(hotels);
+        const hotels = await Hotel.find()
+            .populate({
+                path: 'owner',
+                select: '_id',
+                match: { statusaccount: 'active' },  
+            });
+
+        const activeHotels = hotels.filter(hotel => hotel.owner !== null);
+
+        res.json(activeHotels);
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving hotels', error });
     }
@@ -118,8 +128,11 @@ exports.createHotel = async (req, res) => {
 // Cập nhật khách sạn theo ID
 exports.updateHotel = async (req, res) => {
     const { id } = req.params;
+    const { name, location, amenities, rating, rooms, media } = req.body;
 
     try {
+        console.log('Processing request...');
+        
         // Tìm khách sạn theo ID
         const hotel = await Hotel.findById(id);
 
@@ -139,7 +152,16 @@ exports.updateHotel = async (req, res) => {
         }
 
         // Cập nhật thông tin khách sạn
-        const updatedHotel = await Hotel.findByIdAndUpdate(id, req.body, { new: true });
+        const updatedHotelData = {
+            name,
+            location: typeof location === 'string' ? JSON.parse(location) : location,
+            amenities: typeof amenities === 'string' ? JSON.parse(amenities) : amenities,
+            rating,
+            rooms: typeof rooms === 'string' ? JSON.parse(rooms) : rooms,
+            media,
+        };
+        
+        const updatedHotel = await Hotel.findByIdAndUpdate(id, updatedHotelData, { new: true });
 
         res.status(200).json({
             success: true,
@@ -147,6 +169,7 @@ exports.updateHotel = async (req, res) => {
             message: 'Hotel updated successfully',
         });
     } catch (error) {
+        console.error('Error updating hotel:', error.message);
         res.status(500).json({
             success: false,
             message: 'Error updating hotel',
@@ -154,6 +177,7 @@ exports.updateHotel = async (req, res) => {
         });
     }
 };
+
 
 // Xóa một khách sạn theo ID
 exports.deleteHotel = async (req, res) => {
@@ -181,6 +205,8 @@ exports.deleteHotel = async (req, res) => {
 };
 exports.searchHotels = async (req, res) => {
     const { location, checkInDate, checkOutDate, guests } = req.body;
+    console.log(location);
+    console.log(guests);
 
     try {
         // Chuyển đổi checkInDate và checkOutDate thành đối tượng Date
@@ -192,9 +218,9 @@ exports.searchHotels = async (req, res) => {
         for (let date = new Date(checkIn); date <= checkOut; date.setDate(date.getDate() + 1)) {
             requestedDates.push(date.toISOString().split('T')[0]); // Chuyển thành chuỗi YYYY-MM-DD
         }
-
+        // const removeAccents = require('remove-accents'); 
         console.log('Requested Dates:', requestedDates);
-
+        // const normalizedLocation = removeAccents(location);
         // Tìm tất cả khách sạn theo địa điểm
         const hotels = await Hotel.find({
             $or: [
@@ -377,5 +403,61 @@ exports.getRoomsByHotel = async (req, res) => {
             success: false,
             message: error.message,
         });
+    }
+};
+
+exports.deleteMedia = async (req, res) => {
+    const { hotelId, fileName } = req.params;
+
+    try {
+        const hotel = await Hotel.findById(hotelId);
+        if (!hotel) {
+            return res.status(404).json({ message: 'Hotel not found' });
+        }
+
+        const fileIndex = hotel.media.indexOf(`/uploads/hotel/${hotelId.toString()}/${fileName}`);
+        if (fileIndex === -1) {
+            return res.status(400).json({ message: 'File not found in hotel media' });
+        }
+
+        hotel.media.splice(fileIndex, 1);
+        await hotel.save();
+
+        const filePath = path.resolve(__dirname, '../../uploads/hotel', hotel.toString(), fileName);
+        console.log(filePath);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            console.log(`Deleted file at: ${filePath}`);
+        } else {
+            console.log(`File does not exist at: ${filePath}`);
+        }
+
+        res.status(200).json({ message: 'File deleted successfully', media: hotel.media });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred', error });
+    }
+};
+
+exports.addMedia = async (req, res) => {
+    const { hotelId } = req.params;
+
+    try {
+        const hotel = await Hotel.findById(hotelId);
+        if (!hotel) {
+            return res.status(404).json({ message: 'Hotel not found' });
+        }
+
+        console.log('test1');
+        console.log(req.files);
+        const uploadedFiles = req.files.map(file => `/uploads/hotel/${hotelId}/${file.filename}`);
+
+        hotel.media.push(...uploadedFiles);
+        await hotel.save();
+
+        res.status(200).json({ message: 'Files added successfully', media: hotel.media });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred', error });
     }
 };

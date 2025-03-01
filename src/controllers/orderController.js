@@ -9,6 +9,7 @@ const User = require('../models/user');
 const Transaction = require('../models/transaction'); // Model giao dịch
 const AdminBalance = require('../models/adminBalance');
 const HostBalance = require('../models/hostBalance');
+const { sendPaymentConfirmationEmail } = require('../middlewares/gmailMiddleware');
 
 
 // APP INFO
@@ -41,7 +42,13 @@ exports.createOrder = async (req, res) => {
         const checkInDate = new Date(reservation.checkInDate);
         const checkOutDate = new Date(reservation.checkOutDate);
         const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)); // Số đêm
-        const amount = reservation.room.price * nights; // Tổng số tiền
+        let amount;
+        if (reservation.paymentMethod == 50) {
+            amount = reservation.room.price * nights * 0.5 ; // Tổng số tiền
+        } else {
+            amount = reservation.room.price * nights ; // Tổng số tiền
+        }
+        // const amount = reservation.room.price * nights ; // Tổng số tiền
 
         // Tạo thông tin đơn hàng
         const transID = Math.floor(Math.random() * 1000000);
@@ -65,7 +72,7 @@ exports.createOrder = async (req, res) => {
             amount: amount, // Tổng số tiền thanh toán
             description: `Payment for reservation #${reservationId}`,
             bank_code: "", // Sử dụng Zalopay app để thanh toán
-            callback_url: "https://de9e-2001-ee1-f401-fc40-15d4-c9a5-f3d7-7c06.ngrok-free.app/api/orders/callback",
+            callback_url: "https://12f8-2001-ee0-1c56-61dc-5daa-77e0-915d-b155.ngrok-free.app/api/orders/callback",
         };
 
         // Tạo mã xác thực
@@ -85,6 +92,7 @@ exports.createOrder = async (req, res) => {
                 amount,
                 status: 'pending', // Trạng thái chờ thanh toán
                 paymentUrl: response.data.order_url, // URL thanh toán trả về từ Zalopay
+                paymentMethod: reservation.paymentMethod,
             });
 
             return res.status(201).json({
@@ -178,17 +186,28 @@ exports.handleZaloPayCallback = async (req, res) => {
         if (!hostId) {
             throw new Error(`Host ID not found in Hotel with id ${room.hotel}`);
         }
+        
+        let hostAmount;
+        let adminFee;
+
+        if (order.paymentMethod == 100) {
+            hostAmount = order.amount * 0.75; // Host nhận 75%
+            adminFee = order.amount * 0.25;  // Admin nhận 25%
+        } else {
+            hostAmount = order.amount * 0.50; // Host nhận 50%
+            adminFee = order.amount * 0.50;  // Admin nhận 50%
+        }
 
 
         console.log("UserId:", order.user._id);
         console.log("Amount:", order.amount);
 
         // Quản lý số dư Admin và Host
-        const hostAmount = order.amount * 0.75; // Host nhận 75%
-        const adminFee = order.amount * 0.25;  // Admin nhận 25%
+        // const hostAmount = order.amount * 0.75; // Host nhận 75%
+        // const adminFee = order.amount * 0.25;  // Admin nhận 25%
 
         const host = await User.findById(hostId);
-
+        // const user = await User.findById(order.user);
 
         if (host) {
             // Nếu tìm thấy host, gán thông tin cho hostName và hostEmail
@@ -211,8 +230,8 @@ exports.handleZaloPayCallback = async (req, res) => {
             status: "paid",
             paymentDate: new Date(),
             hostName: hostName,  // Lưu thông tin hostName vào Transaction
-            hostEmail: hostEmail // Lưu thông tin hostEmail vào Transaction
-
+            hostEmail: hostEmail, // Lưu thông tin hostEmail vào Transaction
+            paymentMethod: order.paymentMethod,
         });
 
         await transaction.save();
@@ -252,6 +271,8 @@ exports.handleZaloPayCallback = async (req, res) => {
 
         result.return_code = 1;
         result.return_message = "success";
+
+        // await sendPaymentConfirmationEmail(user, order._id, reservation._id, order.amount );
     } catch (err) {
         console.error("Error processing callback:", err.message);
         result.return_code = 0; // Zalopay sẽ callback lại

@@ -147,16 +147,12 @@ const fs = require('fs');
 
 exports.addRoom = async (req, res) => {
     const { hotelId } = req.params;
-    const { startDate, endDate } = req.body;
+    const { roomNumber, roomType, price, capacity, startDate, endDate, amenities } = req.body;
     const files = req.files;
-    // console.log(hotelId);
-    // console.log(startDate, endDate);
-    // console.log(files);
 
     try {
-        // Tìm khách sạn theo ID
+        // Find hotel by ID
         const hotel = await Hotel.findById(hotelId);
-        console.log(hotel);
         if (!hotel) {
             return res.status(404).json({
                 success: false,
@@ -164,7 +160,7 @@ exports.addRoom = async (req, res) => {
             });
         }
 
-        // Kiểm tra quyền sở hữu
+        // Check ownership
         if (hotel.owner.toString() !== req.user.id) {
             return res.status(403).json({
                 success: false,
@@ -172,42 +168,70 @@ exports.addRoom = async (req, res) => {
             });
         }
 
-        // Lấy URL của file
+        // Validate dates
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid dates: startDate must be before endDate',
+            });
+        }
+
+        // Validate price and capacity
+        if (!price || price <= 0 || !capacity || capacity <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid room price or capacity',
+            });
+        }
+
+        // Validate room number uniqueness
+        const existingRoom = await Room.findOne({ hotel: hotelId, roomNumber });
+        if (existingRoom) {
+            return res.status(400).json({
+                success: false,
+                message: 'Room number already exists in this hotel',
+            });
+        }
+
+        // Process media files
         const images = files
             .filter(file => file.mimetype.startsWith('image'))
             .map(file => `/uploads/hotel/${hotelId}/${file.filename}`);
         const videos = files
             .filter(file => file.mimetype.startsWith('video'))
             .map(file => `/uploads/hotel/${hotelId}/${file.filename}`);
-
         const media = [...images, ...videos];
 
-
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        if (start >= end) {
+        // Parse and validate amenities
+        const parsedAmenities = amenities ? JSON.parse(amenities) : [];
+        if (!Array.isArray(parsedAmenities)) {
             return res.status(400).json({
                 success: false,
-                message: 'End date must be after start date',
+                message: 'Amenities must be an array',
             });
         }
 
-        // Tạo khoảng thời gian trống
-        const availableDates = [{
+        // Create new room
+        const room = new Room({
+            roomNumber,
+            roomType,
+            price,
+            capacity,
             startDate: start,
             endDate: end,
-        }];
-        console.log(availableDates);
-        // Tạo phòng mới
-        const room = new Room({
-            ...req.body,
+            amenities: parsedAmenities,
             hotel: hotelId,
-            availableDates,
             media,
         });
-        console.log(room);
-        // Lưu phòng vào MongoDB
+
+        // Save room to database
         await room.save();
+
+        // Add room reference to hotel
+        hotel.rooms.push(room._id);
+        await hotel.save();
 
         res.status(201).json({
             success: true,
@@ -215,13 +239,15 @@ exports.addRoom = async (req, res) => {
             message: 'Room added successfully',
         });
     } catch (error) {
-        res.status(501).json({
+        console.error('Error adding room:', error);
+        res.status(500).json({
             success: false,
-            message: 'Error adding room',
+            message: 'Internal server error',
             error: error.message,
         });
     }
 };
+
 
 
 exports.updateRoom = async (req, res) => {
@@ -304,7 +330,8 @@ exports.deleteRoom = async (req, res) => {
         }
 
         // Xóa phòng
-        await Room.findByIdAndDelete(roomId);
+        room.statusroom = 'Hidden';
+        await room.save();
 
         res.status(200).json({
             success: true,
@@ -515,3 +542,81 @@ exports.addMedia = async (req, res) => {
         res.status(500).json({ message: 'An error occurred', error });
     }
 };
+
+exports.updateRoomAvailableDates = async (req, res) => {
+    const { roomId } = req.params;
+    const { checkInDate, checkOutDate } = req.body;
+
+    try {
+        const room = await Room.findById(roomId);
+        if (!room) {
+            return res.status(404).json({ success: false, message: 'Room not found' });
+        }
+  
+        const startDate = new Date(checkInDate);
+        const endDate = new Date(checkOutDate);
+  
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            return res.status(400).json({ success: false, message: 'Invalid check-in or check-out date.' });
+        }
+  
+        if (startDate >= endDate) {
+            return res.status(400).json({ success: false, message: 'Check-in date must be before check-out date.' });
+        }
+  
+        const isOK = !room.bookDates.some(bookDate => {
+            const bookDateStart = new Date(bookDate.startDate);
+            const bookDateEnd = new Date(bookDate.endDate);
+        
+            return (startDate < bookDateEnd && endDate > bookDateStart);
+        });
+        
+        if (!isOK) {
+            return res.status(400).json({
+                success: false,
+                message: 'There is an existing booking during this time period.',
+            });
+        }
+
+  
+        // Điều chỉnh `availableDates`
+        const updatedAvailableDates = [];
+        let isNewRangeAdded = false;
+
+        room.availableDates.forEach(availableDate => {
+            const availableStart = new Date(availableDate.startDate);
+            const availableEnd = new Date(availableDate.endDate);
+        
+            if (startDate >= availableStart && endDate > availableEnd && startDate <= availableEnd) {
+                updatedAvailableDates.push({ 
+                    startDate: availableStart, 
+                    endDate: new Date(endDate.setDate(endDate.getDate() - 0)) 
+                });
+            } else if (startDate < availableStart && endDate < availableEnd && endDate >= availableStart) {
+                updatedAvailableDates.push({ 
+                    startDate: new Date(endDate.setDate(endDate.getDate() + 0)), 
+                    endDate: availableEnd 
+                });
+            } else if (endDate < availableStart || startDate > availableEnd) {
+                updatedAvailableDates.push(availableDate);
+            }
+        
+            // Check if the new range overlaps with the current availableDate
+            if (!(endDate < availableStart || startDate > availableEnd)) {
+                isNewRangeAdded = true;
+            }
+        });
+        
+        // If the new range does not overlap with any existing dates, add it as a new entry
+        if (!isNewRangeAdded) {
+            updatedAvailableDates.push({ startDate, endDate });
+        }
+        room.availableDates = updatedAvailableDates;
+        await room.save();
+  
+        res.status(200).json({ success: true, message: 'Room dates updated successfully.' });
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({ success: false, message: error.message });
+    }
+  };

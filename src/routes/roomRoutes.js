@@ -1,7 +1,7 @@
 // routes/roomRoutes.js
 const express = require('express');
 const { protect, authorize } = require('../middlewares/authMiddleware');
-const { addRoom, deleteRoom, updateRoom, searchRooms, detailRoom, getRoomsByHotel, deleteMedia, addMedia } = require('../controllers/roomController');
+const { addRoom, deleteRoom, updateRoom, searchRooms, detailRoom, getRoomsByHotel, deleteMedia, addMedia, updateRoomAvailableDates } = require('../controllers/roomController');
 const upload = require('../utils/multerConfig');
 
 const router = express.Router();
@@ -17,6 +17,7 @@ router.put('/update/:id', protect, authorize('hotelOwner'), updateRoom);
 // tìm phòng
 router.post('/search', searchRooms);
 
+router.put('/updatedates/:roomId', protect, authorize('hotelOwner'), updateRoomAvailableDates);
 //chi tiết phòng
 router.get('/detailroom/:id', detailRoom);
 

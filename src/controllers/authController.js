@@ -104,7 +104,7 @@ exports.login = async (req, res) => {
         // Kiểm tra xem người dùng có tồn tại hay không
         const user = await User.findOne({ email }).select('+password');
         if (!user) {
-            return res.status(400).json({
+            return res.status(402).json({
                 success: false,
                 message: 'Email hoặc mật khẩu không đúng',
             });
@@ -113,12 +113,27 @@ exports.login = async (req, res) => {
         // Kiểm tra mật khẩu
         const isMatch = await user.matchPassword(password);
         if (!isMatch) {
-            return res.status(400).json({
+            return res.status(403).json({
                 success: false,
                 message: 'Email hoặc mật khẩu không đúng',
             });
         }
+        console.log(user);
+        if (user.role === 'hotelOwner') {
+            if (user.statusaccount === 'pending') {
+                return res.status(410).json({
+                    success: false,
+                    message: 'Please wait for admin to approval your account',
+                })
+            }
+        }
 
+        if (user.statusaccount === 'ban') {
+            return res.status(411).json({
+                success: false,
+                message: 'Your account has been banned. Please contact admin for more detail.',
+            })
+        }
         // Tạo JWT token
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
             expiresIn: process.env.JWT_EXPIRE,
@@ -138,6 +153,8 @@ exports.login = async (req, res) => {
         });
     }
 };
+
+
 exports.getUserList = async (req, res) => {
     try {
         // Kiểm tra quyền admin (nếu sử dụng middleware)

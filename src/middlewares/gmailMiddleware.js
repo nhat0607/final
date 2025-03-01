@@ -180,7 +180,7 @@ ${body}
     }
 };
 
-const sendPaymentConfirmationEmail = async (user, order, reservation, amount) => {
+exports.sendPaymentConfirmationEmail = async (user, order, reservation, amount) => {
     try {
         const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
         const accessToken = await setAccessTokenWithRefreshToken(refreshToken);

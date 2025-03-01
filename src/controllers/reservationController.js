@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 
 exports.bookRoom = async (req, res) => {
   const { roomId } = req.params;
-  const { checkInDate, checkOutDate } = req.body;
+  const { checkInDate, checkOutDate, paymentMethod } = req.body;
 
   try {
       const room = await Room.findById(roomId);
@@ -46,6 +46,7 @@ exports.bookRoom = async (req, res) => {
           user: req.user.id,
           checkInDate,
           checkOutDate,
+          paymentMethod,
           expirationDate, // Lưu thời gian hết hạn
       });
 
@@ -63,7 +64,7 @@ exports.bookRoom = async (req, res) => {
               updatedAvailableDates.push({ startDate: availableStart, endDate: new Date(startDate.setDate(startDate.getDate() - 0)) });
               updatedAvailableDates.push({ startDate: new Date(endDate.setDate(endDate.getDate() + 0)), endDate: availableEnd });
           } else if (startDate <= availableStart && endDate < availableEnd && endDate >= availableStart) {
-              updatedAvailableDates.push({ startDate: new Date(endDate.setDate(endDate.getDate() + 1)), endDate: availableEnd });
+              updatedAvailableDates.push({ startDate: new Date(endDate.setDate(endDate.getDate() + 0)), endDate: availableEnd });
           } else if (startDate > availableStart && endDate >= availableEnd && startDate <= availableEnd) {
               updatedAvailableDates.push({ startDate: availableStart, endDate: new Date(startDate.setDate(startDate.getDate() - 1)) });
           } else if (endDate < availableStart || startDate > availableEnd) {
@@ -75,6 +76,74 @@ exports.bookRoom = async (req, res) => {
       await room.save();
 
       res.status(201).json({ success: true, data: reservation });
+  } catch (error) {
+      console.error(error);
+      res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateRoomDates = async (req, res) => {
+  const { roomId } = req.params;
+  const { checkInDate, checkOutDate } = req.body;
+  console.log(checkInDate);
+  console.log(checkOutDate);
+  try {
+      const room = await Room.findById(roomId);
+      if (!room) {
+          return res.status(404).json({ success: false, message: 'Room not found' });
+      }
+
+      const startDate = new Date(checkInDate);
+      const endDate = new Date(checkOutDate);
+
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          return res.status(400).json({ success: false, message: 'Invalid check-in or check-out date.' });
+      }
+
+      if (startDate >= endDate) {
+          return res.status(400).json({ success: false, message: 'Check-in date must be before check-out date.' });
+      }
+
+      const isAvailable = room.availableDates.some(availableDate => {
+        const availableStart = new Date(availableDate.startDate);
+        const availableEnd = new Date(availableDate.endDate);
+        return availableStart <= startDate && availableEnd >= endDate;
+      });
+
+      if (!isAvailable) {
+          return res.status(400).json({
+              success: false,
+              message: 'Room is not available during this period.',
+          });
+      }
+      // Cập nhật `bookDates`
+      room.bookDates.push({
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+      });
+
+      // Điều chỉnh `availableDates`
+      const updatedAvailableDates = [];
+      room.availableDates.forEach(availableDate => {
+          const availableStart = new Date(availableDate.startDate);
+          const availableEnd = new Date(availableDate.endDate);
+
+          if (startDate > availableStart && endDate < availableEnd) {
+              updatedAvailableDates.push({ startDate: availableStart, endDate: new Date(startDate.setDate(startDate.getDate() - 0)) });
+              updatedAvailableDates.push({ startDate: new Date(endDate.setDate(endDate.getDate() + 0)), endDate: availableEnd });
+          } else if (startDate <= availableStart && endDate < availableEnd && endDate >= availableStart) {
+              updatedAvailableDates.push({ startDate: new Date(endDate.setDate(endDate.getDate() + 0)), endDate: availableEnd });
+          } else if (startDate > availableStart && endDate >= availableEnd && startDate <= availableEnd) {
+              updatedAvailableDates.push({ startDate: availableStart, endDate: new Date(startDate.setDate(startDate.getDate() - 1)) });
+          } else if (endDate < availableStart || startDate > availableEnd) {
+              updatedAvailableDates.push(availableDate);
+          }
+      });
+
+      room.availableDates = updatedAvailableDates;
+      await room.save();
+
+      res.status(200).json({ success: true, message: 'Room dates updated successfully.' });
   } catch (error) {
       console.error(error);
       res.status(400).json({ success: false, message: error.message });
@@ -298,7 +367,7 @@ exports.getBookingsByHotel = async (req, res) => {
           match: { hotel: new mongoose.Types.ObjectId(hotelId) }, // Lọc theo hotelId trong Room
           populate: { path: 'hotel' }, // Tùy chọn: Lấy thêm thông tin chi tiết về hotel
         })
-        .populate("user", "name email") // Lấy thông tin người dùng
+        .populate("user", "name email phonenumber country") // Lấy thông tin người dùng
         .exec();
   
       // Lọc bỏ các bản ghi có room là null

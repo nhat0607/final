@@ -40,6 +40,11 @@ const reservationSchema = new mongoose.Schema({
         },
     ],
     expirationDate: { type: Date, required: true }, // Thời gian hết hạn
+    paymentMethod: {
+        type: Number,
+        enum: [50,100],
+        required: true,
+    }
 }, { timestamps: true });
 
 const Reservation = mongoose.model('Reservation', reservationSchema, 'Reservation');

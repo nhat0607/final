@@ -45,6 +45,11 @@ const transactionSchema = new mongoose.Schema({
         enum: ['paid', 'failed', 'refunded'],
         default: 'paid',
     },
+    paymentMethod: {
+        type: Number,
+        enum: [50,100],
+        required: true,
+    }
 
 }, { timestamps: true });
 

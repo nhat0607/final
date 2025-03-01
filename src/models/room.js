@@ -52,6 +52,11 @@ const roomSchema = new mongoose.Schema({
         },
     }],
     media: { type: [String], default: [] }, // Lưu đường dẫn file (URL)
+    statusroom : {
+        type : String,
+        enum : ['Hidden', 'Active'],
+        defaul: 'Active',
+    },
 }, { timestamps: true });
 
 const Room = mongoose.model('Room', roomSchema, 'Room');

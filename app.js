@@ -6,6 +6,7 @@ const roomRoutes = require('./src/routes/roomRoutes')
 const reservationRoutes = require('./src/routes/reservationRoutes');
 const orderRoutes = require('./src/routes/orderRoutes');
 const reviewRoutes = require('./src/routes/reviewRoutes');
+const cronJobs = require('./src/utils/cronJobs');
 const transactionRoutes = require('./src/routes/transactionRoutes')
 const { engine } = require('express-handlebars'); // Sử dụng destructuring để lấy engine từ express-handlebars
 const userRoutes = require('./src/routes/userRoutes');
@@ -78,7 +79,7 @@ app.use('/api/orders', orderRoutes); // Đăng ký routes order
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.use('/uploads/reviews', express.static('uploads'));
+app.use('/uploads/reviews', express.static('uploads/reviews'));
 
 app.use('/api/reviews', reviewRoutes);
 
@@ -92,6 +93,7 @@ app.get('/', (req, res) => {
 });
 // Đọc các biến môi trường từ file .env
 
+// Import cron job
 
 // Middleware để parse JSON
 app.use(express.json());
